@@ -1,9 +1,8 @@
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, TrendingUp, TrendingDown, BarChart2, Activity, RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/store';
-import { getStockByCode, generateKLineData } from '@/utils/mockData';
 import {
   AreaChart,
   Area,
@@ -21,19 +20,17 @@ type TimeRange = '1D' | '1W' | '1M' | '3M' | '1Y';
 export default function StockDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { 
-    stocks, 
-    addToWatchlist, 
-    removeFromWatchlist, 
+  const {
+    stocks,
+    addToWatchlist,
+    removeFromWatchlist,
     isInWatchlist,
-    isRealData,
     fetchSingleStock,
     fetchKLineData,
     isLoading,
   } = useAppStore();
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
-  const [kLineData, setKLineData] = useState<any[]>([]);
-  const [stock, setStock] = useState<any>(null);
+  const [klineData, setKlineData] = useState<any[]>([]);
 
   const timeRangeDays: Record<TimeRange, number> = {
     '1D': 1,
@@ -47,40 +44,31 @@ export default function StockDetail() {
   useEffect(() => {
     const loadStockData = async () => {
       if (!code) return;
-      
-      let stockData = getStockByCode(code);
-      if (!stockData) {
-        stockData = stocks.find(s => s.code === code);
+
+      const stock = stocks.find(s => s.code === code);
+      if (stock) {
+        // 已有数据，直接获取实时更新
+        await fetchSingleStock(code);
       }
-      
-      if (stockData) {
-        setStock(stockData);
-      }
-      
-      // 获取真实数据
-      if (isRealData && code) {
-        const realStock = await fetchSingleStock(code);
-        if (realStock) {
-          setStock(realStock);
-        }
-      }
-      
+
       // 获取K线数据
       const kline = await fetchKLineData(code, timeRangeDays[timeRange]);
-      setKLineData(kline);
+      setKlineData(kline);
     };
-    
+
     loadStockData();
-  }, [code, isRealData]);
+  }, [code]);
 
   // 时间范围变化时重新获取K线
   useEffect(() => {
     if (code) {
       fetchKLineData(code, timeRangeDays[timeRange]).then(data => {
-        setKLineData(data);
+        setKlineData(data);
       });
     }
   }, [timeRange]);
+
+  const stock = stocks.find(s => s.code === code);
 
   if (!stock && code) {
     return (
@@ -110,9 +98,9 @@ export default function StockDetail() {
 
   const inWatchlist = isInWatchlist(stock.code);
   const isPositive = stock.changePercent >= 0;
-  const chartData = kLineData.length > 0 
-    ? kLineData.slice(-timeRangeDays[timeRange])
-    : generateKLineData(stock.code, timeRangeDays[timeRange]);
+  const chartData = klineData.length > 0
+    ? klineData.slice(-timeRangeDays[timeRange])
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -126,15 +114,13 @@ export default function StockDetail() {
             <p className="text-xs text-gray-500">{stock.code}</p>
           </div>
           <div className="flex items-center gap-2">
-            {isRealData && (
-              <button
-                onClick={() => code && fetchSingleStock(code)}
-                disabled={isLoading}
-                className="p-2 -mr-2 hover:bg-gray-100 rounded-full"
-              >
-                <RefreshCw className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
-            )}
+            <button
+              onClick={() => code && fetchSingleStock(code)}
+              disabled={isLoading}
+              className="p-2 -mr-2 hover:bg-gray-100 rounded-full"
+            >
+              <RefreshCw className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
             <button
               onClick={() => inWatchlist ? removeFromWatchlist(stock.code) : addToWatchlist(stock.code)}
               className="p-2 -mr-2 hover:bg-gray-100 rounded-full"
@@ -204,72 +190,80 @@ export default function StockDetail() {
             </div>
           </div>
 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity={0.1} />
-                    <stop offset="95%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={30}
-                />
-                <YAxis
-                  domain={['auto', 'auto']}
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => value.toFixed(0)}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: number) => [`¥${value.toFixed(2)}`, '价格']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="close"
-                  stroke={isPositive ? '#10b981' : '#ef4444'}
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorPrice)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {chartData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity={0.1} />
+                      <stop offset="95%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={30}
+                  />
+                  <YAxis
+                    domain={['auto', 'auto']}
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => value.toFixed(0)}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: number) => [`¥${value.toFixed(2)}`, '价格']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="close"
+                    stroke={isPositive ? '#10b981' : '#ef4444'}
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorPrice)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-400">
+              暂无数据
+            </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-5 h-5 text-purple-600" />
-            <h2 className="font-semibold text-gray-900">成交量</h2>
+        {chartData.length > 0 && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart2 className="w-5 h-5 text-purple-600" />
+              <h2 className="font-semibold text-gray-900">成交量</h2>
+            </div>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData.slice(-20)}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => value.slice(5)}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: number) => [`${(value / 10000).toFixed(1)}万`, '成交量']}
+                  />
+                  <Bar dataKey="volume" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.slice(-20)}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => value.slice(5)}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: number) => [`${(value / 10000).toFixed(1)}万`, '成交量']}
-                />
-                <Bar dataKey="volume" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

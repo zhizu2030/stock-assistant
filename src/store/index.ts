@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Stock, Message, WatchlistItem } from '@/types';
-import { mockStocks, getStockByCode, getAIResponse, generateKLineData } from '@/utils/mockData';
+import { getAIResponse } from '@/utils/mockData';
 import { getBatchRealTimeQuotes, getRealTimeQuote, getRealKLineData, baseStocks } from '@/utils/realData';
 
 interface AppState {
@@ -9,27 +9,25 @@ interface AppState {
   watchlist: WatchlistItem[];
   messages: Message[];
   selectedStock: Stock | null;
-  isRealData: boolean;
   isLoading: boolean;
   lastFetchTime: number;
-  // 核心功能
+
   addToWatchlist: (stockCode: string) => void;
   removeFromWatchlist: (stockCode: string) => void;
   isInWatchlist: (stockCode: string) => boolean;
   addMessage: (content: string, role: 'user' | 'assistant') => void;
   clearMessages: () => void;
   selectStock: (stock: Stock) => void;
-  // 数据获取
+
   fetchRealTimeData: (force?: boolean) => Promise<void>;
   fetchSingleStock: (stockCode: string) => Promise<Stock | null>;
   fetchKLineData: (stockCode: string, days?: number) => Promise<any[]>;
-  toggleRealData: () => void;
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      stocks: mockStocks,
+      stocks: baseStocks,
       watchlist: [],
       messages: [
         {
@@ -40,7 +38,6 @@ export const useAppStore = create<AppState>()(
         },
       ],
       selectedStock: null,
-      isRealData: false,
       isLoading: false,
       lastFetchTime: 0,
 
@@ -101,30 +98,17 @@ export const useAppStore = create<AppState>()(
         set({ selectedStock: stock });
       },
 
-      toggleRealData: () => {
-        set((state) => {
-          const newMode = !state.isRealData;
-          return {
-            isRealData: newMode,
-            stocks: newMode ? baseStocks : mockStocks,
-          };
-        });
-      },
-
       fetchRealTimeData: async (force = false) => {
-        const { isRealData, lastFetchTime, stocks } = get();
-        
-        if (!isRealData) return;
-        
+        const { lastFetchTime, stocks } = get();
         const now = Date.now();
         if (!force && now - lastFetchTime < 30000) return; // 30秒内不重复请求
-        
+
         set({ isLoading: true });
-        
+
         try {
           const stockCodes = stocks.map(s => s.code);
           const realQuotes = await getBatchRealTimeQuotes(stockCodes);
-          
+
           if (realQuotes.length > 0) {
             // 合并数据，保留没有获取到的原始数据
             const updatedStocks = stocks.map(stock => {
@@ -141,12 +125,6 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchSingleStock: async (stockCode: string): Promise<Stock | null> => {
-        const { isRealData, stocks } = get();
-        
-        if (!isRealData) {
-          return getStockByCode(stockCode) || null;
-        }
-        
         try {
           const realQuote = await getRealTimeQuote(stockCode);
           if (realQuote) {
@@ -158,26 +136,20 @@ export const useAppStore = create<AppState>()(
           return realQuote;
         } catch (error) {
           console.error('获取单只股票失败:', error);
-          return getStockByCode(stockCode) || null;
+          return get().stocks.find(s => s.code === stockCode) || null;
         }
       },
 
       fetchKLineData: async (stockCode: string, days: number = 60) => {
-        const { isRealData } = get();
-        
-        if (!isRealData) {
-          return generateKLineData(stockCode, days);
-        }
-        
         try {
           const klineData = await getRealKLineData(stockCode, days);
           if (klineData.length > 0) {
             return klineData;
           }
-          return generateKLineData(stockCode, days); // 失败时回退
+          return [];
         } catch (error) {
           console.error('获取K线失败:', error);
-          return generateKLineData(stockCode, days);
+          return [];
         }
       },
     }),
@@ -185,7 +157,6 @@ export const useAppStore = create<AppState>()(
       name: 'stock-assistant-storage',
       partialize: (state) => ({
         watchlist: state.watchlist,
-        isRealData: state.isRealData,
       }),
     }
   )
