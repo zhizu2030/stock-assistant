@@ -1,11 +1,11 @@
 
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import Home from "@/pages/Home";
-import Market from "@/pages/Market";
-import Watchlist from "@/pages/Watchlist";
-import Profile from "@/pages/Profile";
-import StockDetail from "@/pages/StockDetail";
-import { BottomNav } from "@/components/BottomNav";
+import Home from "./pages/Home";
+import Market from "./pages/Market";
+import Watchlist from "./pages/Watchlist";
+import Profile from "./pages/Profile";
+import StockDetail from "./pages/StockDetail";
+import { BottomNav } from "./components/BottomNav";
 
 function AppContent() {
   const location = useLocation();

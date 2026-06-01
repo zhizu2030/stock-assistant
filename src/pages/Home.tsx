@@ -1,10 +1,10 @@
 
 import { useEffect, useState } from 'react';
 import { Sparkles, TrendingUp, TrendingDown, Zap, RefreshCw, Search, X } from 'lucide-react';
-import { useAppStore } from '@/store';
-import { StockCard } from '@/components/StockCard';
-import { searchRealStocks } from '@/utils/realData';
-import { Stock } from '@/types';
+import { useAppStore } from '../store';
+import { StockCard } from '../components/StockCard';
+import { searchRealStocks } from '../utils/realData';
+import { Stock } from '../types';
 
 export default function Home() {
   const {

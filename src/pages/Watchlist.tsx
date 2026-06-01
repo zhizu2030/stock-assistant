@@ -1,6 +1,6 @@
 import { Star, Trash2, Plus } from 'lucide-react';
-import { useAppStore } from '@/store';
-import { StockCard } from '@/components/StockCard';
+import { useAppStore } from '../store';
+import { StockCard } from '../components/StockCard';
 import { useNavigate } from 'react-router-dom';
 
 export default function Watchlist() {

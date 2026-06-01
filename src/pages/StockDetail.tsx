@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, TrendingUp, TrendingDown, BarChart2, Activity, RefreshCw } from 'lucide-react';
-import { useAppStore } from '@/store';
+import { useAppStore } from '../store';
 import {
   AreaChart,
   Area,

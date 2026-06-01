@@ -1,19 +1,52 @@
 
 import { useState, useMemo } from 'react';
 import { Search, TrendingUp, Filter } from 'lucide-react';
-import { useAppStore } from '@/store';
-import { StockCard } from '@/components/StockCard';
-import { searchStocks } from '@/utils/mockData';
+import { useAppStore } from '../store';
+import { StockCard } from '../components/StockCard';
+import { searchRealStocks, getStocksByCategory, stockCategories } from '../utils/realData';
+import type { Stock } from '../types';
 
 type SortType = 'change' | 'price' | 'volume';
+type CategoryType = keyof typeof stockCategories;
+
+const categoryLabels: Record<CategoryType, string> = {
+  hot: '热门',
+  consumer: '消费',
+  finance: '金融',
+  tech: '科技',
+  newEnergy: '新能源',
+  chip: '芯片',
+  medicine: '医药',
+  military: '军工',
+  realEstate: '地产',
+  media: '传媒',
+  agriculture: '农业',
+  metal: '有色',
+  power: '电力',
+};
 
 export default function Market() {
   const [query, setQuery] = useState('');
   const [sortType, setSortType] = useState<SortType>('change');
+  const [activeCategory, setActiveCategory] = useState<CategoryType>('hot');
   const { stocks } = useAppStore();
 
+  const categoryStocks = useMemo(() => {
+    return getStocksByCategory(activeCategory);
+  }, [activeCategory]);
+
   const filteredStocks = useMemo(() => {
-    let result = query.trim() ? searchStocks(query) : stocks;
+    let result: Stock[] = [];
+    
+    if (query.trim()) {
+      result = searchRealStocks(query);
+    } else {
+      // 合并分类股票与实时数据
+      result = categoryStocks.map(catStock => {
+        const realStock = stocks.find(s => s.code === catStock.code);
+        return realStock || catStock;
+      });
+    }
     
     switch (sortType) {
       case 'change':
@@ -25,7 +58,7 @@ export default function Market() {
       default:
         return result;
     }
-  }, [stocks, query, sortType]);
+  }, [stocks, categoryStocks, query, sortType]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -43,6 +76,26 @@ export default function Market() {
           />
         </div>
 
+        {/* 分类标签 */}
+        <div className="mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {(Object.keys(stockCategories) as CategoryType[]).map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  activeCategory === category
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {categoryLabels[category]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 排序按钮 */}
         <div className="flex gap-2">
           {[
             { type: 'change' as SortType, label: '涨跌幅' },

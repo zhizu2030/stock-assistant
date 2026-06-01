@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Stock, Message, WatchlistItem } from '@/types';
-import { getAIResponse } from '@/utils/mockData';
-import { getBatchRealTimeQuotes, getRealTimeQuote, getRealKLineData, baseStocks } from '@/utils/realData';
+import { Stock, Message, WatchlistItem } from '../types';
+import { getAIResponse } from '../utils/mockData';
+import { getBatchRealTimeQuotes, getRealTimeQuote, getRealKLineData, baseStocks } from '../utils/realData';
 
 interface AppState {
   stocks: Stock[];

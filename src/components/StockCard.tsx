@@ -1,11 +1,12 @@
 
 import { Star } from 'lucide-react';
-import { Stock } from '@/types';
-import { useAppStore } from '@/store';
+import { Stock } from '../types';
+import { useAppStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 interface StockCardProps {
+  key?: string | number;
   stock: Stock;
 }
 

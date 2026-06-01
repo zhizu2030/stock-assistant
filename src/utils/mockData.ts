@@ -1,4 +1,4 @@
-import { Stock, KLineData } from '@/types';
+import { Stock, KLineData } from '../types';
 
 export const mockStocks: Stock[] = [
   { code: '600519', name: '贵州茅台', price: 1820.50, change: 25.80, changePercent: 1.44, volume: 2345000, high: 1850.00, low: 1790.00, open: 1800.00, marketCap: 22900, pe: 35.2 },
