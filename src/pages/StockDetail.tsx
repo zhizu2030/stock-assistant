@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, TrendingUp, TrendingDown, BarChart2, Activity } from 'lucide-react';
+import { ArrowLeft, Star, TrendingUp, TrendingDown, BarChart2, Activity, RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/store';
 import { getStockByCode, generateKLineData } from '@/utils/mockData';
 import {
@@ -20,13 +21,68 @@ type TimeRange = '1D' | '1W' | '1M' | '3M' | '1Y';
 export default function StockDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { stocks, addToWatchlist, removeFromWatchlist, isInWatchlist } = useAppStore();
+  const { 
+    stocks, 
+    addToWatchlist, 
+    removeFromWatchlist, 
+    isInWatchlist,
+    isRealData,
+    fetchSingleStock,
+    fetchKLineData,
+    isLoading,
+  } = useAppStore();
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
+  const [kLineData, setKLineData] = useState<any[]>([]);
+  const [stock, setStock] = useState<any>(null);
 
-  const stock = useMemo(() => code ? getStockByCode(code) : undefined, [code]);
-  const kLineData = useMemo(() => code ? generateKLineData(code, 60) : [], [code]);
+  const timeRangeDays: Record<TimeRange, number> = {
+    '1D': 1,
+    '1W': 7,
+    '1M': 30,
+    '3M': 90,
+    '1Y': 365,
+  };
 
-  if (!stock) {
+  // 获取股票数据
+  useEffect(() => {
+    const loadStockData = async () => {
+      if (!code) return;
+      
+      let stockData = getStockByCode(code);
+      if (!stockData) {
+        stockData = stocks.find(s => s.code === code);
+      }
+      
+      if (stockData) {
+        setStock(stockData);
+      }
+      
+      // 获取真实数据
+      if (isRealData && code) {
+        const realStock = await fetchSingleStock(code);
+        if (realStock) {
+          setStock(realStock);
+        }
+      }
+      
+      // 获取K线数据
+      const kline = await fetchKLineData(code, timeRangeDays[timeRange]);
+      setKLineData(kline);
+    };
+    
+    loadStockData();
+  }, [code, isRealData]);
+
+  // 时间范围变化时重新获取K线
+  useEffect(() => {
+    if (code) {
+      fetchKLineData(code, timeRangeDays[timeRange]).then(data => {
+        setKLineData(data);
+      });
+    }
+  }, [timeRange]);
+
+  if (!stock && code) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -42,18 +98,21 @@ export default function StockDetail() {
     );
   }
 
+  if (!stock) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
   const inWatchlist = isInWatchlist(stock.code);
   const isPositive = stock.changePercent >= 0;
-
-  const timeRangeDays: Record<TimeRange, number> = {
-    '1D': 1,
-    '1W': 7,
-    '1M': 30,
-    '3M': 90,
-    '1Y': 365,
-  };
-
-  const chartData = kLineData.slice(-timeRangeDays[timeRange]);
+  const chartData = kLineData.length > 0 
+    ? kLineData.slice(-timeRangeDays[timeRange])
+    : generateKLineData(stock.code, timeRangeDays[timeRange]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -66,12 +125,23 @@ export default function StockDetail() {
             <h1 className="font-bold text-gray-900">{stock.name}</h1>
             <p className="text-xs text-gray-500">{stock.code}</p>
           </div>
-          <button
-            onClick={() => inWatchlist ? removeFromWatchlist(stock.code) : addToWatchlist(stock.code)}
-            className="p-2 -mr-2 hover:bg-gray-100 rounded-full"
-          >
-            <Star className={`w-6 h-6 ${inWatchlist ? 'text-yellow-500 fill-current' : 'text-gray-400'}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            {isRealData && (
+              <button
+                onClick={() => code && fetchSingleStock(code)}
+                disabled={isLoading}
+                className="p-2 -mr-2 hover:bg-gray-100 rounded-full"
+              >
+                <RefreshCw className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+            <button
+              onClick={() => inWatchlist ? removeFromWatchlist(stock.code) : addToWatchlist(stock.code)}
+              className="p-2 -mr-2 hover:bg-gray-100 rounded-full"
+            >
+              <Star className={`w-6 h-6 ${inWatchlist ? 'text-yellow-500 fill-current' : 'text-gray-400'}`} />
+            </button>
+          </div>
         </div>
       </div>
 

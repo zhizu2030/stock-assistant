@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, TrendingDown, Zap } from 'lucide-react';
+import { Send, Sparkles, TrendingUp, TrendingDown, Zap, RefreshCw, Database } from 'lucide-react';
 import { useAppStore } from '@/store';
 import { StockCard } from '@/components/StockCard';
 import { getAIResponse } from '@/utils/mockData';
@@ -9,12 +9,31 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { stocks, messages, addMessage } = useAppStore();
+  const { 
+    stocks, 
+    messages, 
+    addMessage,
+    isRealData,
+    isLoading,
+    fetchRealTimeData,
+    toggleRealData,
+  } = useAppStore();
 
   const sortedByGain = [...stocks].sort((a, b) => b.changePercent - a.changePercent);
   const sortedByLoss = [...stocks].sort((a, b) => a.changePercent - b.changePercent);
   const hotStocks = sortedByGain.slice(0, 3);
   const downStocks = sortedByLoss.slice(0, 3);
+
+  // 自动获取真实数据
+  useEffect(() => {
+    if (isRealData) {
+      fetchRealTimeData(true);
+      const interval = setInterval(() => {
+        fetchRealTimeData();
+      }, 60000); // 每分钟更新
+      return () => clearInterval(interval);
+    }
+  }, [isRealData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,17 +64,27 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-20">
       <div className="px-4 py-6 bg-gradient-to-r from-blue-900 to-cyan-600">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">智能炒股助手</h1>
+              <p className="text-blue-100 text-sm">AI 赋能，智慧投资</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">智能炒股助手</h1>
-            <p className="text-blue-100 text-sm">AI 赋能，智慧投资</p>
-          </div>
+          {/* 数据模式切换 */}
+          <button
+            onClick={toggleRealData}
+            className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-white text-sm transition-all"
+          >
+            <Database className="w-4 h-4" />
+            <span>{isRealData ? '真实数据' : '模拟数据'}</span>
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-white/10 backdrop-blur rounded-xl p-4">
             <div className="flex items-center gap-2 text-blue-100 text-sm mb-1">
               <TrendingUp className="w-4 h-4" />
@@ -70,6 +99,18 @@ export default function Home() {
             </div>
             <div className="text-2xl font-bold text-white">{stocks.length}</div>
           </div>
+          {isRealData && (
+            <div className="bg-white/10 backdrop-blur rounded-xl p-4">
+              <button
+                onClick={() => fetchRealTimeData(true)}
+                disabled={isLoading}
+                className="flex items-center gap-2 text-blue-100 text-sm hover:text-white transition-all w-full"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>{isLoading ? '刷新中...' : '刷新数据'}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -174,4 +215,3 @@ export default function Home() {
     </div>
   );
 }
-
