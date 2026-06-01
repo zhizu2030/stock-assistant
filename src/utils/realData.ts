@@ -1,25 +1,6 @@
 import { Stock, KLineData } from '@/types';
 
-// Yahoo Finance股票代码映射
-const yahooStockMapping: Record<string, { code: string; name: string }> = {
-  '600519': { code: '600519.SS', name: '贵州茅台' },
-  '000858': { code: '000858.SZ', name: '五粮液' },
-  '601318': { code: '601318.SS', name: '中国平安' },
-  '000001': { code: '000001.SZ', name: '平安银行' },
-  '600036': { code: '600036.SS', name: '招商银行' },
-  '002594': { code: '002594.SZ', name: '比亚迪' },
-  '300750': { code: '300750.SZ', name: '宁德时代' },
-  '600900': { code: '600900.SS', name: '长江电力' },
-  '000333': { code: '000333.SZ', name: '美的集团' },
-  '601899': { code: '601899.SS', name: '紫金矿业' },
-  'AAPL': { code: 'AAPL', name: '苹果' },
-  'MSFT': { code: 'MSFT', name: '微软' },
-  'GOOGL': { code: 'GOOGL', name: '谷歌' },
-  'TSLA': { code: 'TSLA', name: '特斯拉' },
-  'AMZN': { code: 'AMZN', name: '亚马逊' },
-};
-
-// 2026年6月真实参考数据（基于市场收盘价）
+// 股票基础数据（用于显示和备用）
 const referenceData: Record<string, Stock> = {
   '600519': { code: '600519', name: '贵州茅台', price: 1326.00, change: 8.50, changePercent: 0.65, volume: 2340000, high: 1335.00, low: 1318.00, open: 1320.00 },
   '000858': { code: '000858', name: '五粮液', price: 118.50, change: -2.30, changePercent: -1.91, volume: 5678000, high: 121.50, low: 117.80, open: 120.00 },
@@ -36,60 +17,30 @@ const referenceData: Record<string, Stock> = {
 // 基础股票列表
 export const baseStocks: Stock[] = Object.values(referenceData);
 
-// 获取股票数据
+// 获取真实股票数据（通过我们的后端代理）
 export async function getRealTimeQuote(stockCode: string): Promise<Stock | null> {
-  console.log(`正在获取 ${stockCode} 数据...`);
+  console.log(`正在通过后端获取 ${stockCode} 数据...`);
   
-  // 尝试获取真实数据（有CORS限制，可能失败）
   try {
-    const yahooCode = yahooStockMapping[stockCode]?.code || stockCode;
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooCode}?interval=1d&range=5d`,
-      { mode: 'cors' }
-    );
+    const response = await fetch(`/api/stock/${stockCode}`);
     
     if (response.ok) {
       const data = await response.json();
-      const result = data?.chart?.result?.[0];
-      
-      if (result) {
-        const meta = result.meta;
-        const quotes = result.indicators?.quote?.[0];
-        const timestamps = result.timestamp || [];
-        
-        if (quotes && timestamps.length > 0) {
-          const currentIdx = timestamps.length - 1;
-          const prevIdx = Math.max(0, timestamps.length - 2);
-          
-          const currentPrice = meta.regularMarketPrice || quotes.close?.[currentIdx] || 0;
-          const prevClose = meta.chartPreviousClose || quotes.close?.[prevIdx] || currentPrice;
-          const high = quotes.high?.[currentIdx] || currentPrice;
-          const low = quotes.low?.[currentIdx] || currentPrice;
-          const open = quotes.open?.[currentIdx] || currentPrice;
-          const volume = quotes.volume?.[currentIdx] || 0;
-          
-          if (currentPrice > 0) {
-            const change = currentPrice - prevClose;
-            const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
-            
-            console.log(`成功获取真实数据: ${currentPrice}`);
-            return {
-              code: stockCode,
-              name: yahooStockMapping[stockCode]?.name || stockCode,
-              price: parseFloat(currentPrice.toFixed(2)),
-              change: parseFloat(change.toFixed(2)),
-              changePercent: parseFloat(changePercent.toFixed(2)),
-              volume: volume,
-              high: parseFloat(high.toFixed(2)),
-              low: parseFloat(low.toFixed(2)),
-              open: parseFloat(open.toFixed(2)),
-            };
-          }
-        }
-      }
+      console.log(`成功获取真实数据: ${data.price}`);
+      return {
+        code: stockCode,
+        name: data.name,
+        price: parseFloat(data.price.toFixed(2)),
+        change: parseFloat(data.change.toFixed(2)),
+        changePercent: parseFloat(data.changePercent.toFixed(2)),
+        volume: data.volume,
+        high: parseFloat(data.high.toFixed(2)),
+        low: parseFloat(data.low.toFixed(2)),
+        open: parseFloat(data.open.toFixed(2)),
+      };
     }
   } catch (apiError) {
-    console.log('真实数据获取失败，使用参考数据');
+    console.log('后端API获取失败，使用参考数据', apiError);
   }
   
   // 如果获取不到真实数据，返回参考数据
@@ -110,59 +61,23 @@ export async function getBatchRealTimeQuotes(stockCodes: string[]): Promise<Stoc
   return results;
 }
 
-// 获取K线数据
+// 获取真实K线数据（通过我们的后端代理）
 export async function getRealKLineData(stockCode: string, days: number = 60): Promise<KLineData[]> {
-  // 先尝试获取真实数据
+  console.log(`正在通过后端获取 ${stockCode} K线数据...`);
+  
   try {
-    const yahooCode = yahooStockMapping[stockCode]?.code || stockCode;
-    
-    const response = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooCode}?interval=1d&range=${Math.max(days, 30)}d`,
-      { mode: 'cors' }
-    );
+    const response = await fetch(`/api/kline/${stockCode}?days=${days}`);
     
     if (response.ok) {
       const data = await response.json();
-      const result = data?.chart?.result?.[0];
-      
-      if (result) {
-        const quotes = result.indicators?.quote?.[0];
-        const timestamps = result.timestamp || [];
-        
-        if (quotes && timestamps.length > 0) {
-          const klineData: KLineData[] = [];
-          
-          for (let i = 0; i < timestamps.length; i++) {
-            const date = new Date(timestamps[i] * 1000);
-            const open = quotes.open?.[i];
-            const high = quotes.high?.[i];
-            const low = quotes.low?.[i];
-            const close = quotes.close?.[i];
-            const volume = quotes.volume?.[i];
-            
-            if (open !== undefined && high !== undefined && low !== undefined && close !== undefined && volume !== undefined) {
-              klineData.push({
-                date: date.toISOString().split('T')[0],
-                open: parseFloat(open.toFixed(2)),
-                high: parseFloat(high.toFixed(2)),
-                low: parseFloat(low.toFixed(2)),
-                close: parseFloat(close.toFixed(2)),
-                volume: volume,
-              });
-            }
-          }
-          
-          if (klineData.length > 0) {
-            return klineData.slice(-days);
-          }
-        }
-      }
+      console.log(`成功获取K线数据，共 ${data.length} 条`);
+      return data;
     }
   } catch (apiError) {
-    console.log('K线真实数据获取失败，使用模拟数据');
+    console.log('K线API获取失败，使用模拟数据', apiError);
   }
   
-  // 生成模拟K线数据（基于参考价格）
+  // 生成模拟K线数据
   const stock = referenceData[stockCode];
   if (!stock) return [];
   
@@ -204,4 +119,3 @@ export function searchRealStocks(query: string): Stock[] {
     stock.name.toLowerCase().includes(lowerQuery)
   );
 }
-
