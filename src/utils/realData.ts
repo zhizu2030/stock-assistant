@@ -1,5 +1,32 @@
 import { Stock, KLineData } from '../types';
 
+// API 配置
+const API_CONFIG = {
+  // 本地模式：从您的电脑服务器获取数据
+  local: {
+    baseUrl: 'http://localhost:8000',
+    enabled: true, // 设置为 true 启用本地模式
+  },
+  // 远程模式：使用腾讯财经API (Vercel部署时用)
+  remote: {
+    enabled: true,
+  }
+};
+
+// 检查本地服务是否可用
+async function checkLocalServer(): Promise<boolean> {
+  if (!API_CONFIG.local.enabled) return false;
+  try {
+    const response = await fetch(`${API_CONFIG.local.baseUrl}/api/health`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(1000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 // 股票数据（包含拼音首字母用于搜索）
 interface StockWithPinyin extends Stock {
   pinyin: string;
@@ -141,16 +168,32 @@ export function getAllStockCodes(): string[] {
   return Object.keys(referenceData);
 }
 
-// 获取真实股票数据（通过我们的后端代理）
+// 获取真实股票数据（智能选择数据源）
 export async function getRealTimeQuote(stockCode: string): Promise<Stock | null> {
-  console.log(`正在通过后端获取 ${stockCode} 数据...`);
+  console.log(`正在获取 ${stockCode} 数据...`);
   
+  // 1. 优先尝试本地API
+  const localAvailable = await checkLocalServer();
+  if (localAvailable) {
+    try {
+      const response = await fetch(`${API_CONFIG.local.baseUrl}/api/stocks/${stockCode}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`成功从本地API获取: ${data.price}`);
+        return data;
+      }
+    } catch (error) {
+      console.log('本地API获取失败，尝试远程API', error);
+    }
+  }
+  
+  // 2. 尝试远程API (Vercel代理)
   try {
     const response = await fetch(`/api/stock/${stockCode}`);
     
     if (response.ok) {
       const data = await response.json();
-      console.log(`成功获取真实数据: ${data.price}`);
+      console.log(`成功从远程API获取: ${data.price}`);
       return {
         code: stockCode,
         name: data.name,
@@ -164,10 +207,10 @@ export async function getRealTimeQuote(stockCode: string): Promise<Stock | null>
       };
     }
   } catch (apiError) {
-    console.log('后端API获取失败，使用参考数据', apiError);
+    console.log('远程API获取失败，使用参考数据', apiError);
   }
   
-  // 如果获取不到真实数据，返回参考数据
+  // 3. 最后使用参考数据
   const stock = referenceData[stockCode];
   if (stock) {
     const { pinyin, ...rest } = stock;
@@ -190,23 +233,39 @@ export async function getBatchRealTimeQuotes(stockCodes: string[]): Promise<Stoc
   return results;
 }
 
-// 获取真实K线数据（通过我们的后端代理）
+// 获取真实K线数据（智能选择数据源）
 export async function getRealKLineData(stockCode: string, days: number = 60): Promise<KLineData[]> {
-  console.log(`正在通过后端获取 ${stockCode} K线数据...`);
+  console.log(`正在获取 ${stockCode} K线数据...`);
   
+  // 1. 优先尝试本地API
+  const localAvailable = await checkLocalServer();
+  if (localAvailable) {
+    try {
+      const response = await fetch(`${API_CONFIG.local.baseUrl}/api/stocks/${stockCode}/kline?days=${days}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`成功从本地API获取K线数据，共 ${data.length} 条`);
+        return data;
+      }
+    } catch (error) {
+      console.log('本地K线API获取失败，尝试远程API', error);
+    }
+  }
+  
+  // 2. 尝试远程API (Vercel代理)
   try {
     const response = await fetch(`/api/kline/${stockCode}?days=${days}`);
     
     if (response.ok) {
       const data = await response.json();
-      console.log(`成功获取K线数据，共 ${data.length} 条`);
+      console.log(`成功从远程API获取K线数据，共 ${data.length} 条`);
       return data;
     }
   } catch (apiError) {
-    console.log('K线API获取失败，使用模拟数据', apiError);
+    console.log('远程K线API获取失败，使用模拟数据', apiError);
   }
   
-  // 生成模拟K线数据
+  // 3. 最后使用模拟数据
   const stock = referenceData[stockCode];
   if (!stock) return [];
   
@@ -240,8 +299,24 @@ export async function getRealKLineData(stockCode: string, days: number = 60): Pr
   return klineData;
 }
 
-// 搜索股票（支持代码、名称、拼音首字母）
-export function searchRealStocks(query: string): Stock[] {
+// 搜索股票（支持本地和远程搜索）
+export async function searchRealStocks(query: string): Promise<Stock[]> {
+  // 1. 优先尝试本地API搜索
+  const localAvailable = await checkLocalServer();
+  if (localAvailable) {
+    try {
+      const response = await fetch(`${API_CONFIG.local.baseUrl}/api/search?query=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`成功从本地API搜索到 ${data.length} 只股票`);
+        return data;
+      }
+    } catch (error) {
+      console.log('本地搜索API获取失败，使用本地搜索', error);
+    }
+  }
+  
+  // 2. 使用本地搜索
   const lowerQuery = query.toLowerCase();
   
   return Object.values(referenceData)

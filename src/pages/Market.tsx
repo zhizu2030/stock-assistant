@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, TrendingUp, Filter } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StockCard } from '../components/StockCard';
@@ -29,17 +29,36 @@ export default function Market() {
   const [query, setQuery] = useState('');
   const [sortType, setSortType] = useState<SortType>('change');
   const [activeCategory, setActiveCategory] = useState<CategoryType>('hot');
+  const [searchResults, setSearchResults] = useState<Stock[]>([]);
   const { stocks } = useAppStore();
 
   const categoryStocks = useMemo(() => {
     return getStocksByCategory(activeCategory);
   }, [activeCategory]);
 
+  // 处理搜索
+  useEffect(() => {
+    if (query.trim()) {
+      let isMounted = true;
+      searchRealStocks(query).then(results => {
+        if (isMounted) {
+          setSearchResults(results);
+        }
+      }).catch(error => {
+        console.error('搜索失败:', error);
+        setSearchResults([]);
+      });
+      return () => { isMounted = false; };
+    } else {
+      setSearchResults([]);
+    }
+  }, [query]);
+
   const filteredStocks = useMemo(() => {
     let result: Stock[] = [];
     
     if (query.trim()) {
-      result = searchRealStocks(query);
+      result = searchResults;
     } else {
       // 合并分类股票与实时数据
       result = categoryStocks.map(catStock => {
@@ -58,7 +77,7 @@ export default function Market() {
       default:
         return result;
     }
-  }, [stocks, categoryStocks, query, sortType]);
+  }, [stocks, categoryStocks, query, sortType, searchResults]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">

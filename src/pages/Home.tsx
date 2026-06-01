@@ -23,12 +23,17 @@ export default function Home() {
   const downStocks = sortedByLoss.slice(0, 3);
 
   // 搜索处理
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     if (query.trim()) {
       setIsSearching(true);
-      const results = searchRealStocks(query);
-      setSearchResults(results);
+      try {
+        const results = await searchRealStocks(query);
+        setSearchResults(results);
+      } catch (error) {
+        console.error('搜索失败:', error);
+        setSearchResults([]);
+      }
     } else {
       setIsSearching(false);
       setSearchResults([]);
