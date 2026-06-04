@@ -10,7 +10,7 @@ import { Stock } from '../types';
 const DEPLOY_INFO = {
   version: '1.0.1',
   deployDate: '2026-06-04',
-  deployTime: '10:30 CST',
+  deployTime: '10:30:00',
   updates: [
     '✅ 更新部署信息机制，每次更新自动记录时间',
     '✅ 添加部署信息横幅，显示部署时间和更新内容',
