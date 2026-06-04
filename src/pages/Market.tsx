@@ -11,18 +11,10 @@ type CategoryType = keyof typeof stockCategories;
 
 const categoryLabels: Record<CategoryType, string> = {
   hot: '热门',
+  test: '测试',
   consumer: '消费',
   finance: '金融',
   tech: '科技',
-  newEnergy: '新能源',
-  chip: '芯片',
-  medicine: '医药',
-  military: '军工',
-  realEstate: '地产',
-  media: '传媒',
-  agriculture: '农业',
-  metal: '有色',
-  power: '电力',
 };
 
 export default function Market() {
