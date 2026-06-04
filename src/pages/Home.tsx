@@ -8,10 +8,12 @@ import { Stock } from '../types';
 
 // 部署信息配置
 const DEPLOY_INFO = {
-  version: '1.0.0',
-  deployDate: '2026-06-01',
-  deployTime: '18:00 CST',
+  version: '1.0.1',
+  deployDate: '2026-06-04',
+  deployTime: '10:30 CST',
   updates: [
+    '✅ 更新部署信息机制，每次更新自动记录时间',
+    '✅ 添加部署信息横幅，显示部署时间和更新内容',
     '✅ 首页搜索功能完善（支持代码、名称、拼音首字母）',
     '✅ 股票池扩展至50+只主要A股',
     '✅ 行情中心添加行业分类标签',
