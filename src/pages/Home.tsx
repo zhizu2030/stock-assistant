@@ -1,10 +1,25 @@
 
 import { useEffect, useState } from 'react';
-import { Sparkles, TrendingUp, TrendingDown, Zap, RefreshCw, Search, X } from 'lucide-react';
+import { Sparkles, TrendingUp, TrendingDown, Zap, RefreshCw, Search, X, Clock, FileText } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StockCard } from '../components/StockCard';
 import { searchRealStocks } from '../utils/realData';
 import { Stock } from '../types';
+
+// 部署信息配置
+const DEPLOY_INFO = {
+  version: '1.0.0',
+  deployDate: '2026-06-01',
+  deployTime: '18:00 CST',
+  updates: [
+    '✅ 首页搜索功能完善（支持代码、名称、拼音首字母）',
+    '✅ 股票池扩展至50+只主要A股',
+    '✅ 行情中心添加行业分类标签',
+    '✅ 移除AI对话功能',
+    '✅ 移除Trae Solo图标',
+    '✅ 优化数据刷新机制'
+  ]
+};
 
 export default function Home() {
   const {
@@ -16,6 +31,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Stock[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showDeployInfo, setShowDeployInfo] = useState(true); // 默认显示
 
   const sortedByGain = [...stocks].sort((a, b) => b.changePercent - a.changePercent);
   const sortedByLoss = [...stocks].sort((a, b) => a.changePercent - b.changePercent);
@@ -57,6 +73,38 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-20">
+      {/* 部署信息横幅 */}
+      {showDeployInfo && (
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm font-semibold">
+                  部署时间：{DEPLOY_INFO.deployDate} {DEPLOY_INFO.deployTime}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4" />
+                <span className="text-sm font-semibold">本次更新内容：</span>
+              </div>
+              <ul className="text-xs space-y-1 ml-6">
+                {DEPLOY_INFO.updates.map((update, index) => (
+                  <li key={index}>{update}</li>
+                ))}
+              </ul>
+            </div>
+            <button
+              onClick={() => setShowDeployInfo(false)}
+              className="text-white/80 hover:text-white ml-2"
+              title="关闭"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="px-4 py-6 bg-gradient-to-r from-blue-900 to-cyan-600">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
