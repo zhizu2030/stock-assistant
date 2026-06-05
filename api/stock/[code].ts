@@ -26,18 +26,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 解析腾讯财经数据
     const parts = data.split('~');
-    if (parts.length < 32) {
+    if (parts.length < 35) {
       return res.status(500).json({ error: '数据解析失败' });
     }
 
     const name = parts[1];
+    const open = parseFloat(parts[2]);
     const currentPrice = parseFloat(parts[3]);
-    const priceChange = parseFloat(parts[4]);
-    const priceChangePercent = parseFloat(parts[5]);
-    const open = parseFloat(parts[5]);
+    const lastClose = parseFloat(parts[4]);
+    const priceChange = parseFloat(parts[5]);
+    const priceChangePercent = parseFloat(parts[6]);
+    const volume = parseInt(parts[7]) * 100;
     const high = parseFloat(parts[33]);
     const low = parseFloat(parts[34]);
-    const volume = parseInt(parts[6]) * 100;
 
     return res.json({
       code,
