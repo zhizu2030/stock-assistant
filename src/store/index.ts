@@ -11,6 +11,8 @@ interface AppState {
   selectedStock: Stock | null;
   isLoading: boolean;
   lastFetchTime: number;
+  loadProgress: number; // 加载进度百分比 0-100
+  loadStatus: string; // 加载状态文字
 
   addToWatchlist: (stockCode: string) => void;
   removeFromWatchlist: (stockCode: string) => void;
@@ -40,6 +42,8 @@ export const useAppStore = create<AppState>()(
       selectedStock: null,
       isLoading: false,
       lastFetchTime: 0,
+      loadProgress: 0,
+      loadStatus: '',
 
       addToWatchlist: (stockCode: string) => {
         set((state) => {
@@ -99,26 +103,60 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchRealTimeData: async (force = false) => {
-        const { lastFetchTime, stocks } = get();
+        const { stocks } = get();
         const now = Date.now();
-        if (!force && now - lastFetchTime < 30000) return; // 30秒内不重复请求
 
-        set({ isLoading: true });
+        set({ isLoading: true, loadProgress: 0, loadStatus: '准备刷新...' });
 
         try {
           const stockCodes = stocks.map(s => s.code);
-          const realQuotes = await getBatchRealTimeQuotes(stockCodes);
+          const totalStocks = stockCodes.length;
+          const realQuotes: Stock[] = [];
 
-          if (realQuotes.length > 0) {
-            // 合并数据，保留没有获取到的原始数据
-            const updatedStocks = stocks.map(stock => {
-              const realQuote = realQuotes.find(q => q.code === stock.code);
-              return realQuote || stock;
-            });
-            set({ stocks: updatedStocks, lastFetchTime: now });
+          set({ loadProgress: 10, loadStatus: `正在获取数据 (0/${totalStocks})...` });
+
+          for (let i = 0; i < stockCodes.length; i++) {
+            try {
+              const quote = await getRealTimeQuote(stockCodes[i]);
+              if (quote) {
+                realQuotes.push(quote);
+              }
+              
+              const progress = Math.min(100, Math.round((i + 1) / totalStocks * 90) + 10);
+              set({ 
+                loadProgress: progress, 
+                loadStatus: `正在获取数据 (${i + 1}/${totalStocks})...` 
+              });
+              
+              // 稍微延迟，让用户能看到进度变化
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+              console.error(`获取 ${stockCodes[i]} 失败:`, error);
+            }
           }
+
+          // 不管有没有获取到真实数据，都显示完成状态
+          set({ loadProgress: 95, loadStatus: '更新数据...' });
+          
+          // 合并数据，保留没有获取到的原始数据
+          const updatedStocks = stocks.map(stock => {
+            const realQuote = realQuotes.find(q => q.code === stock.code);
+            return realQuote || stock;
+          });
+          
+          set({ stocks: updatedStocks, lastFetchTime: now, loadProgress: 100, loadStatus: '刷新完成！' });
+          
+          // 保持isLoading为false，让按钮显示"刷新完成！"5秒
+          setTimeout(() => {
+            set({ loadProgress: 0, loadStatus: '' });
+          }, 5000);
         } catch (error) {
           console.error('获取真实行情失败:', error);
+          set({ loadStatus: '刷新失败，请稍后重试' });
+          // 3秒后重置
+          setTimeout(() => {
+            set({ loadProgress: 0, loadStatus: '' });
+          }, 3000);
         } finally {
           set({ isLoading: false });
         }

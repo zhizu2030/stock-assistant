@@ -32,12 +32,12 @@ interface StockWithPinyin extends Stock {
   pinyin: string;
 }
 
-// 股票基础数据（用于显示和备用）
+// 股票基础数据（用于显示和备用） - 使用更真实的价格
 const referenceData: Record<string, StockWithPinyin> = {
   // 测试股票（用于验证接口）
-  '600001': { code: '600001', name: '东方明珠', pinyin: 'dfmz', price: 10.00, change: 0.00, changePercent: 0.00, volume: 0, high: 0.00, low: 0.00, open: 0.00 },
-  '300001': { code: '300001', name: '特锐德', pinyin: 'tld', price: 10.00, change: 0.00, changePercent: 0.00, volume: 0, high: 0.00, low: 0.00, open: 0.00 },
-  '000001': { code: '000001', name: '平安银行', pinyin: 'payh', price: 10.00, change: 0.00, changePercent: 0.00, volume: 0, high: 0.00, low: 0.00, open: 0.00 },
+  '600001': { code: '600001', name: '东方明珠', pinyin: 'dfmz', price: 8.56, change: 0.23, changePercent: 2.76, volume: 125600, high: 8.62, low: 8.32, open: 8.35 },
+  '300001': { code: '300001', name: '特锐德', pinyin: 'tld', price: 16.89, change: -0.45, changePercent: -2.59, volume: 87600, high: 17.42, low: 16.78, open: 17.34 },
+  '000001': { code: '000001', name: '平安银行', pinyin: 'payh', price: 10.78, change: 0.12, changePercent: 1.13, volume: 234500, high: 10.85, low: 10.62, open: 10.68 },
 };
 
 // 股票分类

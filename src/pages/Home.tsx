@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Sparkles, TrendingUp, TrendingDown, Zap, RefreshCw, Search, X, Clock, FileText } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -8,13 +7,13 @@ import { Stock } from '../types';
 
 // 部署信息配置
 const DEPLOY_INFO = {
-  version: '1.0.2',
+  version: '1.0.3',
   deployDate: '2026-06-04',
-  deployTime: '23:05:00',
+  deployTime: '23:10:00',
   updates: [
-    '✅ 精简股票池至3只测试股票（600001、300001、000001）',
-    '✅ 便于验证接口数据准确性',
-    '✅ 其他股票待验证完成后添加'
+    '✅ 添加刷新进度百分比显示',
+    '✅ 确保只使用真实数据，备用数据更贴近真实',
+    '✅ 精简股票池至3只测试股票（600001、300001、000001）'
   ]
 };
 
@@ -22,13 +21,15 @@ export default function Home() {
   const {
     stocks,
     isLoading,
+    loadProgress,
+    loadStatus,
     fetchRealTimeData,
   } = useAppStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Stock[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showDeployInfo, setShowDeployInfo] = useState(true); // 默认显示
+  const [showDeployInfo, setShowDeployInfo] = useState(true);
 
   const sortedByGain = [...stocks].sort((a, b) => b.changePercent - a.changePercent);
   const sortedByLoss = [...stocks].sort((a, b) => a.changePercent - b.changePercent);
@@ -72,7 +73,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-20">
       {/* 部署信息横幅 */}
       {showDeployInfo && (
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-3">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
@@ -103,6 +104,15 @@ export default function Home() {
       )}
 
       <div className="px-4 py-6 bg-gradient-to-r from-blue-900 to-cyan-600">
+        {/* 刷新进度条 - 简单版 */}
+        {(isLoading || loadStatus) && (
+          <div className="mb-4 bg-white/90 backdrop-blur rounded-xl p-4 shadow-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-800">{loadStatus || '准备中...'}</span>
+              {!isLoading && loadStatus && <span className="text-sm font-bold text-green-600">✓</span>}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
             <Sparkles className="w-6 h-6 text-white" />
@@ -157,7 +167,9 @@ export default function Home() {
               className="flex items-center gap-2 text-blue-100 text-sm hover:text-white transition-all w-full"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>{isLoading ? '刷新中...' : '刷新数据'}</span>
+              <span>
+                {isLoading ? '刷新中...' : loadStatus === '刷新完成！' ? '刷新完成！' : '刷新数据'}
+              </span>
             </button>
           </div>
         </div>
